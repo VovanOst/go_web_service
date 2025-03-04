@@ -1,0 +1,175 @@
+package main
+
+import (
+	"encoding/json"
+	"encoding/xml"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"sort"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+// Тестовая структура для ответа сервера
+type TestCase struct {
+	Query      string
+	OrderField string
+	OrderBy    int
+	Limit      int
+	Offset     int
+	WantStatus int
+	WantError  string
+}
+
+func SearchServer(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("query")
+	orderField := r.URL.Query().Get("order_field")
+	orderBy, _ := strconv.Atoi(r.URL.Query().Get("order_by"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	if orderField == "" {
+		orderField = "Name"
+	}
+
+	// Проверка orderField
+	if orderField != "Id" && orderField != "Age" && orderField != "Name" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(SearchErrorResponse{Error: "ErrorBadOrderField"})
+		return
+	}
+
+	// Проверка offset
+	if offset < 0 {
+		http.Error(w, "offset must be >= 0", http.StatusBadRequest)
+		return
+	}
+
+	// Читаем XML-файл
+	data, err := ioutil.ReadFile("dataset.xml")
+	if err != nil {
+		http.Error(w, "cannot read dataset", http.StatusInternalServerError)
+		return
+	}
+
+	// Парсим XML
+	var users Users
+	if err := xml.Unmarshal(data, &users); err != nil {
+		http.Error(w, "cannot parse dataset", http.StatusInternalServerError)
+		return
+	}
+
+	// Фильтруем пользователей по query
+	var result []User
+	for _, user := range users.List {
+		name := user.FirstName + " " + user.LastName
+		if query == "" || strings.Contains(name, query) || strings.Contains(user.About, query) {
+			result = append(result, user)
+		}
+	}
+
+	// Сортировка
+	sort.Slice(result, func(i, j int) bool {
+		switch orderField {
+		case "Id":
+			if orderBy == OrderByDesc {
+				return result[i].Id > result[j].Id
+			}
+			return result[i].Id < result[j].Id
+		case "Age":
+			if orderBy == OrderByDesc {
+				return result[i].Age > result[j].Age
+			}
+			return result[i].Age < result[j].Age
+		case "Name":
+			nameI := result[i].FirstName + " " + result[i].LastName
+			nameJ := result[j].FirstName + " " + result[j].LastName
+			if orderBy == OrderByDesc {
+				return nameI > nameJ
+			}
+			return nameI < nameJ
+		default:
+			return false
+		}
+	})
+
+	// Ограничение выборки
+	if offset >= len(result) {
+		result = []User{}
+	} else {
+		if limit+offset > len(result) {
+			limit = len(result) - offset
+		}
+		result = result[offset : offset+limit]
+	}
+
+	// Отправляем JSON-ответ
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
+func TestSearchServer(t *testing.T) {
+	// Запускаем тестовый сервер
+	ts := httptest.NewServer(http.HandlerFunc(SearchServer))
+	defer ts.Close()
+
+	// Набор тестов
+	cases := []TestCase{
+		// 1. Базовый тест (без фильтров)
+		{Query: "", OrderField: "Name", OrderBy: OrderByAsc, Limit: 5, Offset: 0, WantStatus: http.StatusOK},
+
+		// 2. Фильтр по Query (ищем конкретное имя)
+		{Query: "John", OrderField: "Name", OrderBy: OrderByAsc, Limit: 5, Offset: 0, WantStatus: http.StatusOK},
+
+		// 3. Ошибка: неверный order_field
+		{Query: "", OrderField: "UnknownField", OrderBy: OrderByAsc, Limit: 5, Offset: 0, WantStatus: http.StatusBadRequest, WantError: "ErrorBadOrderField"},
+
+		// 4. Ошибка: отрицательный offset
+		{Query: "", OrderField: "Name", OrderBy: OrderByAsc, Limit: 5, Offset: -1, WantStatus: http.StatusBadRequest},
+
+		// 5. Ошибка: слишком большой offset (пустой результат)
+		{Query: "", OrderField: "Name", OrderBy: OrderByAsc, Limit: 5, Offset: 1000, WantStatus: http.StatusOK},
+
+		// 6. Проверяем сортировку по возрасту (Age)
+		{Query: "", OrderField: "Age", OrderBy: OrderByAsc, Limit: 5, Offset: 0, WantStatus: http.StatusOK},
+
+		// 7. Проверяем сортировку по ID (Id)
+		{Query: "", OrderField: "Id", OrderBy: OrderByDesc, Limit: 5, Offset: 0, WantStatus: http.StatusOK},
+	}
+
+	// Запускаем тесты
+	for i, tc := range cases {
+		t.Run("Test case "+strconv.Itoa(i), func(t *testing.T) {
+			url := ts.URL + "/?query=" + tc.Query +
+				"&order_field=" + tc.OrderField +
+				"&order_by=" + strconv.Itoa(tc.OrderBy) +
+				"&limit=" + strconv.Itoa(tc.Limit) +
+				"&offset=" + strconv.Itoa(tc.Offset)
+
+			resp, err := http.Get(url)
+			if err != nil {
+				t.Fatalf("Ошибка при запросе: %v", err)
+			}
+			defer resp.Body.Close()
+
+			// Проверяем статус-код
+			if resp.StatusCode != tc.WantStatus {
+				t.Errorf("Ожидался статус %d, но получили %d", tc.WantStatus, resp.StatusCode)
+			}
+
+			// Проверяем JSON-ошибку
+			if tc.WantStatus == http.StatusBadRequest {
+				body, _ := ioutil.ReadAll(resp.Body)
+				var errResp struct {
+					Error string `json:"error"`
+				}
+				_ = json.Unmarshal(body, &errResp)
+				if errResp.Error != tc.WantError {
+					t.Errorf("Ожидалась ошибка %s, но получили %s", tc.WantError, errResp.Error)
+				}
+			}
+		})
+	}
+}

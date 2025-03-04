@@ -1,0 +1,128 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sort"
+)
+
+func main() {
+	out := os.Stdout
+	//path := os.Getwd()
+
+	if !(len(os.Args) == 2 || len(os.Args) == 3) {
+		panic("usage go run main.go . [-f]")
+	}
+	path := os.Args[1]
+	printFiles := len(os.Args) == 3 && os.Args[2] == "-f"
+	err := dirTree(out, path, printFiles)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+func dirTree(output io.Writer, path string, printFiles bool) error {
+	return walkDir(output, path, printFiles, "")
+}
+
+func walkDir(output io.Writer, path string, printFiles bool, prefix string) error {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	// Сортируем записи по имени
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
+
+	// Фильтруем файлы, если `printFiles == false`
+	if !printFiles {
+		var dirsOnly []os.DirEntry
+		for _, entry := range entries {
+			if entry.IsDir() {
+				dirsOnly = append(dirsOnly, entry)
+			}
+		}
+		entries = dirsOnly
+	}
+
+	for i, entry := range entries {
+		isLast := i == len(entries)-1 // Последний элемент на уровне
+		connector := "├───"
+		if isLast {
+			connector = "└───"
+		}
+
+		entryName := entry.Name()
+		fullPath := filepath.Join(path, entryName)
+
+		// Если это файл, добавляем размер
+		if !entry.IsDir() {
+			info, err := os.Stat(fullPath)
+			if err != nil {
+				return err
+			}
+			size := info.Size()
+			if size == 0 {
+				entryName += " (empty)"
+			} else {
+				entryName += fmt.Sprintf(" (%db)", size)
+			}
+		}
+
+		// Печатаем текущую запись
+		fmt.Fprintf(output, "%s%s%s\n", prefix, connector, entryName)
+
+		// Если это директория, рекурсивно обходим её содержимое
+		if entry.IsDir() {
+			newPrefix := prefix
+			if isLast {
+				newPrefix += "\t"
+			} else {
+				newPrefix += "│\t"
+			}
+
+			err := walkDir(output, fullPath, printFiles, newPrefix)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+/*func walkDir(output io.Writer, path string, printFiles bool, prefix string) error {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	// Сортируем записи по имени
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
+
+	// Фильтруем файлы, если `printFiles == false`
+	if !printFiles {
+		var dirsOnly []os.DirEntry
+		for _, entry := range entries {
+			if entry.IsDir() {
+				dirsOnly = append(dirsOnly, entry)
+			}
+		}
+		entries = dirsOnly
+	}
+
+	for i, entry := range entries {
+		entryName := entry.Name()
+		fullPath := filepath.Join(path, entryName)
+		fmt.Fprintf(output, "%d%s%s\n", i, fullPath, entryName)
+
+	}
+
+	return nil
+}*/

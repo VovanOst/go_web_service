@@ -1,0 +1,25 @@
+mode: set
+hw4/client.go:53.80,57.19 2 1
+hw4/client.go:57.19,59.3 1 1
+hw4/client.go:60.2,60.20 1 1
+hw4/client.go:60.20,62.3 1 1
+hw4/client.go:63.2,63.20 1 1
+hw4/client.go:63.20,65.3 1 1
+hw4/client.go:68.2,80.16 10 1
+hw4/client.go:80.16,81.54 1 1
+hw4/client.go:81.54,83.4 1 1
+hw4/client.go:84.3,84.50 1 1
+hw4/client.go:86.2,89.25 3 1
+hw4/client.go:90.31,91.44 1 1
+hw4/client.go:92.38,93.53 1 1
+hw4/client.go:94.29,97.17 3 1
+hw4/client.go:97.17,99.4 1 1
+hw4/client.go:100.3,100.44 1 1
+hw4/client.go:100.44,102.4 1 1
+hw4/client.go:103.3,103.73 1 1
+hw4/client.go:106.2,108.16 3 1
+hw4/client.go:108.16,110.3 1 1
+hw4/client.go:112.2,113.28 2 1
+hw4/client.go:113.28,116.3 2 1
+hw4/client.go:116.8,118.3 1 1
+hw4/client.go:120.2,120.21 1 1

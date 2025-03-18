@@ -293,7 +293,9 @@ func runTests(t *testing.T, ts *httptest.Server, cases []Case) {
 			expected interface{}
 			req      *http.Request
 		)
-
+		/*if idx != 10 {
+			continue
+		}*/
 		caseName := fmt.Sprintf("case %d: [%s] %s %s", idx, item.Method, item.Path, item.Query)
 
 		if item.Method == http.MethodPost {
@@ -316,7 +318,7 @@ func runTests(t *testing.T, ts *httptest.Server, cases []Case) {
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 
-		// fmt.Printf("[%s] body: %s\n", caseName, string(body))
+		//fmt.Printf("[%s] body: %s\n", caseName, string(body))
 
 		if resp.StatusCode != item.Status {
 			t.Errorf("[%s] expected http status %v, got %v", caseName, item.Status, resp.StatusCode)

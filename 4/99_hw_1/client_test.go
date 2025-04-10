@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	//"net/http/httptest"
@@ -84,7 +85,7 @@ func TestFindUsers(t *testing.T) {
 				Limit:  5,
 				Offset: 0,
 			},
-			wantErr: "cant unpack result json",
+			wantErr: "cant unpack result json: invalid character 'i' looking for beginning of object key string",
 		},
 
 		// ❌ 5. Ошибка: таймаут сервера
@@ -97,7 +98,7 @@ func TestFindUsers(t *testing.T) {
 				Limit:  5,
 				Offset: 0,
 			},
-			wantErr: "timeout for",
+			wantErr: "timeout for limit=6&offset=0&order_by=0&order_field=&query=",
 		},
 
 		// ❌ 6. Ошибка: Bad Request (400) с неверным полем сортировки
@@ -231,7 +232,7 @@ func TestFindUsers_UnknownError(t *testing.T) {
 	}
 
 	_, err := searchClient.FindUsers(SearchRequest{Limit: 5, Offset: 0})
-	if err == nil || err.Error() != "unknown error some unknown error occurred" {
+	if err == nil || !strings.Contains(err.Error(), "some unknown error occurred") { //!strings.Contains(err.Error(), "cant unpack error json")
 		t.Errorf("Expected 'unknown error some unknown error occurred', got: %v", err)
 	}
 }

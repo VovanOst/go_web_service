@@ -4,7 +4,7 @@ import (
 	_ "github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/go-playground/assert/v2"
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/golang-jwt/jwt"
+	//_ "github.com/golang-jwt/jwt"
 
 	// _ "github.com/golang/mock"
 	_ "github.com/gorilla/mux"

@@ -476,7 +476,8 @@ func TestApp(t *testing.T) {
 		},
 	}
 
-	for _, item := range testCases {
+	for index, item := range testCases {
+		fmt.Println("Номер теста:", index, "Название теста:", item.Name)
 		ok := t.Run(item.Name, func(t *testing.T) {
 
 			if item.Before != nil {

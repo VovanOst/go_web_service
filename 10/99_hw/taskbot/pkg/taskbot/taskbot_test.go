@@ -1,4 +1,4 @@
-package main
+package taskbot
 
 import (
 	"bytes"
@@ -7,9 +7,11 @@ import (
 	"reflect"
 	"strconv"
 	"sync/atomic"
+	"taskbot/config"
 
 	// "encoding/json"
 	"fmt"
+	//"taskbot/pkg/taskbot"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 
@@ -24,8 +26,9 @@ import (
 func init() {
 	// upd global var for testing
 	// we use patched version of gopkg.in/telegram-bot-api.v4 ( WebhookURL const -> var)
-	WebhookURL = "http://127.0.0.1:8081"
-	BotToken = "_golangcourse_test"
+
+	//WebhookURL = "http://127.0.0.1:8081"
+	//BotToken = "_golangcourse_test"
 }
 
 var (
@@ -62,14 +65,14 @@ func (srv *TDS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		srv.Answers[chatID] = text
 		srv.Unlock()
 
-		//fmt.Println("TDS sendMessage", chatID, text)
+		fmt.Println("TDS sendMessage", chatID, text)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		panic(fmt.Errorf("unknown command %s", r.URL.Path))
 	})
 
-	handler := http.StripPrefix("/bot"+BotToken, mux)
+	handler := http.StripPrefix("/bot"+config.BotToken, mux)
 	handler.ServeHTTP(w, r)
 }
 
@@ -154,7 +157,7 @@ func SendMsgToBot(userID int, text string) error {
 	reqData, _ := json.Marshal(upd)
 
 	reqBody := bytes.NewBuffer(reqData)
-	req, _ := http.NewRequest(http.MethodPost, WebhookURL, reqBody)
+	req, _ := http.NewRequest(http.MethodPost, config.WebhookURL, reqBody)
 	_, err := client.Do(req)
 	return err
 }
@@ -174,7 +177,7 @@ func TestTasks(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
-		err := startTaskBot(ctx, ":8081")
+		err := StartTaskBot(ctx, ":8081")
 		if err != nil {
 			t.Fatalf("startTaskBot error: %s", err)
 		}
@@ -381,7 +384,7 @@ assignee: я
 			t.Fatalf("%s SendMsgToBot error: %s", caseName, err)
 		}
 		// give TDS time to process request
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(15 * time.Millisecond)
 
 		tds.Lock()
 		result := reflect.DeepEqual(tds.Answers, item.answers)

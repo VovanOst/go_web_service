@@ -1,0 +1,148 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+"""
+authorized - директива, которая проверяет что пользователь авторизован
+"""
+
+directive @authorized on FIELD_DEFINITION
+
+directive @goField(forceResolver: Boolean!) on FIELD_DEFINITION
+
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+  user: User!
+}
+
+type User {
+  id: ID!
+  name: String!
+}
+
+type Query {
+  Catalog(ID: ID!): Catalog
+  Seller(ID: ID!): Seller
+  MyCart: [CartItem!]! @authorized
+}
+
+input NewTodo {
+  text: String!
+  userId: String!
+}
+
+type Mutation {
+  AddToCart(in: AddToCartInput!): [CartItem!]! @authorized
+  RemoveFromCart(in: RemoveFromCartInput!): [CartItem!]! @authorized
+}
+
+type Item {
+  """
+  ID товара
+  """
+  id: Int!
+  """
+  Имя товара
+  """
+  name: String!
+  """
+  Родительский каталог
+  """
+  parent: Catalog!
+  """
+  Сущность продавец
+  """
+  seller: Seller!
+  """
+  Количесто товара в корзине у пользователя
+  """
+  inCart: Int! @authorized @goField(forceResolver: true)
+  """
+   Остаток на складе
+    """
+  stock: Int!
+  """
+  Текст, сколько осталось на складе (<=1 - мало; >=2 && <=3 - хватает; >3 - много)
+  """
+  inStockText: String!  @goField(forceResolver: true)
+}
+
+input AddToCartInput {
+  itemID: ID!
+  quantity: Int!
+}
+
+input RemoveFromCartInput {
+  itemID: ID!
+  quantity: Int!
+}
+
+type Catalog {
+  """
+  ID каталога
+  """
+  id: Int!
+  """
+  Название раздела каталога
+  """
+  name: String!
+  """
+  Родительский раздел
+  """
+  parent: Catalog!
+  """
+  Дочерние разделы
+  """
+  childs: [Catalog!]!
+  """
+  Товары в разделе
+  """
+  items(limit: Int = 3, offset: Int = 0): [Item!]! @goField(forceResolver: true)
+}
+
+
+
+
+type Seller {
+  """
+  ID продавца
+  """
+  id: Int!
+  """
+  Имя продавца
+  """
+  name: String!
+  """
+  Количество сделок у продавца (берется из testdata.json)
+  """
+  deals: Int!
+  """
+  Товары продавца
+  """
+  items(limit: Int = 3, offset: Int = 0): [Item!]! @goField(forceResolver: true)
+}
+
+
+
+"""
+CartItem - сущность элемента корзины
+"""
+type CartItem {
+  """
+  ID товара, который надо добавить в корзину
+  """
+  item: Item!
+  """
+  Количество товаров данного типа в корзине
+  """
+  quantity: Int!
+}
+
+
+

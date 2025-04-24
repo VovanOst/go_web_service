@@ -1,1 +1,68 @@
-package main
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+# Корневой запрос
+type Query {
+  # Запрос каталога по идентификатору
+  Catalog(ID: ID!): Catalog
+  # Получение продавца по идентификатору
+  Seller(ID: ID!): Seller
+  # Получение корзины для текущего пользователя (требует авторизации)
+  MyCart: [CartItem!]! @authorized
+}
+
+# Мутации для работы с корзиной
+type Mutation {
+  AddToCart(in: AddToCartInput!): [CartItem!]! @authorized
+  RemoveFromCart(in: RemoveFromCartInput!): [CartItem!]! @authorized
+}
+
+# Тип каталога
+type Catalog {
+  id: ID!
+  name: String!
+  # Вложенные каталоги (если они есть)
+  childs: [Catalog]
+  # Список товаров с поддержкой пагинации
+  items(limit: Int, offset: Int): [Item!]!
+}
+
+# Тип товара
+type Item {
+  id: ID!
+  name: String!
+  # Продавец, реализовано forceResolver, чтобы не тянуть данные напрямую из структуры
+  seller: Seller!
+  # Текст наличия товара, вычисляется динамически
+  inStockText: String!
+  # Количество товара в корзине; поле защищено директивой @authorized
+  inCart: Int! @authorized
+}
+
+# Тип продавца
+type Seller {
+  id: ID!
+  name: String!
+  # Список товаров продавца с аргументом пагинации
+  items(limit: Int): [Item!]!
+}
+
+# Элемент корзины
+type CartItem {
+  item: Item!
+  quantity: Int!
+}
+
+# Входной объект для добавления в корзину
+input AddToCartInput {
+  itemID: ID!
+  quantity: Int!
+}
+
+# Входной объект для удаления из корзины
+input RemoveFromCartInput {
+  itemID: ID!
+  quantity: Int!
+}

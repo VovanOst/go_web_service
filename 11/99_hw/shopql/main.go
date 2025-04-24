@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/99designs/gqlgen/graphql"
 	"log"
 	"math/rand"
 	"net/http"
@@ -26,7 +29,18 @@ func GetApp() http.Handler {
 	svc := service.NewService()
 	resolver := &graph.Resolver{Svc: svc}
 	srv := handler.NewDefaultServer(
-		graph.NewExecutableSchema(graph.Config{Resolvers: resolver}),
+		graph.NewExecutableSchema(graph.Config{
+			Resolvers: resolver,
+			Directives: graph.DirectiveRoot{
+				Authorized: func(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+					_, err := graph.GetUserIDFromContext(ctx)
+					if err != nil {
+						return nil, errors.New("User not authorized")
+					}
+					return next(ctx)
+				},
+			},
+		}),
 	)
 
 	mux := http.NewServeMux()
@@ -53,7 +67,10 @@ func GetApp() http.Handler {
 		}
 		token := fmt.Sprintf("%d", rand.Int63())
 		// Инициализируем пустую корзину для нового пользователя
-		service.NewService().Carts[token] = make(map[string]*model.CartItem)
+		service.NewService().Carts[token] = &service.Cart{
+			Items: make(map[string]*model.CartItem),
+			Order: []string{},
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{"body": map[string]string{"token": token}})
 	})

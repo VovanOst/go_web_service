@@ -153,7 +153,6 @@ func (r *CommandRouter) Route(from *tgbotapi.User, text string) map[int]string {
 		}
 		var outLines []string
 		for _, t := range tasks {
-			// Формат: "2. сделать ДЗ по курсу by @ppetrov\n/unassign_2 /resolve_2"
 			line := fmt.Sprintf("%d. %s by @%s", t.ID, t.Title, t.Owner)
 			line += fmt.Sprintf("\n/assign_%d", t.ID)
 			outLines = append(outLines, line)

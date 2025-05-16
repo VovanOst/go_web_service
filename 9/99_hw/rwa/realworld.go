@@ -34,7 +34,4 @@ func GetApp() http.Handler {
 
 	mux.HandleFunc("/api/user/logout", userHandler.LogoutHandler)
 	return mux
-	/*return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("RealWorld backend is running"))
-	})*/
 }
